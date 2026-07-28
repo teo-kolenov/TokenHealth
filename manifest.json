@@ -1,0 +1,13 @@
+{
+  "name": "Token Health Analysis",
+  "id": "GENERATED_ON_PUBLISH",
+  "api": "1.0.0",
+  "main": "dist/code.js",
+  "ui": "dist/ui.html",
+  "editorType": ["figma"],
+  "documentAccess": "dynamic-page",
+  "networkAccess": {
+    "allowedDomains": ["none"],
+    "reasoning": "All analysis runs locally on the open file. Design data never leaves Figma."
+  }
+}

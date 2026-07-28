@@ -1,0 +1,207 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Token Health Analysis — plugin preview</title>
+<style>
+  :root {
+    --figma-canvas: #1E1E1E;
+    --figma-panel: #2C2C2C;
+    --figma-panel-2: #383838;
+    --figma-border: #444444;
+    --figma-text: #FFFFFF;
+    --figma-text-dim: #B3B3B3;
+    --figma-blue: #0D99FF;
+    --brand-accent: #007BBE;
+    --ok: #439C0B;
+    --warn: #F57504;
+    --fail: #E0031F;
+    --muted: #989AA1;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: var(--figma-canvas);
+    color: var(--figma-text);
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    font-size: 11px;
+  }
+
+  /* ---- Figma-like toolbar ---- */
+  .toolbar {
+    height: 40px;
+    background: var(--figma-panel);
+    border-bottom: 1px solid var(--figma-border);
+    display: flex; align-items: center; gap: 12px;
+    padding: 0 12px;
+    flex-shrink: 0;
+  }
+  .logo {
+    width: 22px; height: 22px; border-radius: 4px;
+    background: var(--brand-accent);
+    display: grid; place-items: center;
+    font-weight: 700; font-size: 11px;
+  }
+  .file-name { font-size: 12px; font-weight: 500; }
+  .file-meta { color: var(--figma-text-dim); }
+  .toolbar-right { margin-left: auto; display: flex; gap: 8px; align-items: center; }
+  .pill {
+    background: var(--figma-panel-2);
+    border: 1px solid var(--figma-border);
+    border-radius: 4px;
+    padding: 3px 8px;
+    color: var(--figma-text-dim);
+  }
+
+  .stage { flex: 1; display: flex; overflow: hidden; }
+
+  /* ---- Canvas ---- */
+  .canvas {
+    flex: 1;
+    overflow: auto;
+    background-color: var(--figma-canvas);
+    background-image: radial-gradient(circle, #2F2F2F 1px, transparent 1px);
+    background-size: 24px 24px;
+    padding: 32px;
+  }
+  #canvas-content { display: flex; flex-wrap: wrap; gap: 32px; align-items: flex-start; }
+
+  .note {
+    max-width: 420px;
+    background: var(--figma-panel);
+    border: 1px solid var(--figma-border);
+    border-radius: 8px;
+    padding: 16px;
+    line-height: 1.6;
+    color: var(--figma-text-dim);
+  }
+  .note h2 { font-size: 12px; color: var(--figma-text); margin-bottom: 8px; }
+  .note code {
+    background: var(--figma-panel-2);
+    padding: 1px 4px; border-radius: 3px;
+    font-family: ui-monospace, monospace; font-size: 10px;
+  }
+  .note ul { margin: 8px 0 0 16px; }
+  .note li { margin-bottom: 4px; }
+  .real   { color: #7BD16B; }
+  .mocked { color: #FFB020; }
+
+  /* ---- Inserted frame stand-in ---- */
+  .canvas-frame { width: 360px; }
+  .canvas-frame-label { color: var(--figma-text-dim); margin-bottom: 6px; font-size: 10px; }
+  .canvas-frame-body {
+    background: #FFFFFF; color: #303237;
+    border-radius: 12px; overflow: hidden;
+    padding: 0 0 16px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+    font-family: 'Roboto', sans-serif;
+  }
+  .cf-accent { height: 6px; background: #0F2D52; }
+  .cf-title { font-size: 15px; font-weight: 500; padding: 14px 16px 2px; }
+  .cf-score { font-size: 34px; font-weight: 500; padding: 0 16px 10px; color: var(--warn); }
+  .cf-row {
+    display: flex; justify-content: space-between;
+    margin: 0 16px 6px; padding: 7px 10px;
+    background: #F0F2F4; border-radius: 6px;
+    font-size: 11px; color: #6A6F7C;
+  }
+  .cf-row b.ok { color: var(--ok); } .cf-row b.warn { color: var(--warn); }
+  .cf-row b.fail { color: var(--fail); } .cf-row b.muted { color: #6A6F7C; }
+  .cf-findings { margin: 10px 16px 0; font-size: 10px; color: #6A6F7C; line-height: 1.7; }
+
+  /* ---- Plugin window ---- */
+  .plugin-window {
+    width: 540px;
+    background: var(--figma-panel);
+    border-left: 1px solid var(--figma-border);
+    display: flex; flex-direction: column;
+    flex-shrink: 0;
+  }
+  .plugin-title {
+    height: 40px;
+    display: flex; align-items: center; gap: 8px;
+    padding: 0 12px;
+    border-bottom: 1px solid var(--figma-border);
+    font-size: 12px; font-weight: 500;
+    flex-shrink: 0;
+  }
+  .plugin-dot { width: 14px; height: 14px; border-radius: 3px; background: var(--brand-accent); }
+  .plugin-title .dim { color: var(--figma-text-dim); font-weight: 400; margin-left: auto; }
+  #plugin-frame { width: 100%; flex: 1; border: 0; background: #FFFFFF; }
+
+  /* ---- Toasts ---- */
+  #toasts {
+    position: fixed; bottom: 20px; left: 50%;
+    transform: translateX(-50%);
+    display: flex; flex-direction: column; gap: 8px;
+    z-index: 10;
+  }
+  .toast {
+    background: #000000; color: #FFFFFF;
+    padding: 10px 16px; border-radius: 6px;
+    font-size: 12px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.5);
+    transition: opacity 0.3s;
+  }
+  .toast.error { background: var(--fail); }
+
+  @media (max-width: 1100px) {
+    .stage { flex-direction: column; }
+    .plugin-window { width: 100%; border-left: 0; border-top: 1px solid var(--figma-border); height: 720px; }
+  }
+</style>
+</head>
+<body>
+  <div class="toolbar">
+    <div class="logo">DS</div>
+    <div>
+      <div class="file-name">Example Design System</div>
+      <div class="file-meta" id="mock-summary">loading…</div>
+    </div>
+    <div class="toolbar-right">
+      <span class="pill">Preview harness</span>
+      <span class="pill">Figma API mocked</span>
+    </div>
+  </div>
+
+  <div class="stage">
+    <div class="canvas">
+      <div id="canvas-content">
+        <div class="note">
+          <h2>What this preview is</h2>
+          The plugin panel on the right is the <strong>real built bundle</strong>
+          (<code>dist/ui.html</code>), talking over the same <code>postMessage</code>
+          protocol Figma uses.
+          <ul>
+            <li><span class="real">Real</span> — UI, extractor, alias resolution, analyzer, renderer</li>
+            <li><span class="real">Real</span> — token values and three-layer collection structure</li>
+            <li><span class="mocked">Mocked</span> — <code>figma.variables</code> API responses</li>
+            <li><span class="mocked">Mocked</span> — document scan results (needs a live scene graph)</li>
+          </ul>
+          <br />
+          Press <strong>Analyze</strong> to run it. Try <strong>Insert into file</strong>
+          to see the frame it would draw, and the Advanced panel to compare
+          adaptive against strict scoring.
+        </div>
+      </div>
+    </div>
+
+    <div class="plugin-window">
+      <div class="plugin-title">
+        <span class="plugin-dot"></span>
+        Token Health Analysis
+        <span class="dim">540 × 720</span>
+      </div>
+      <iframe id="plugin-frame" src="./ui.html" title="Token Health Analysis plugin"></iframe>
+    </div>
+  </div>
+
+  <div id="toasts"></div>
+  <script src="./harness.js"></script>
+</body>
+</html>

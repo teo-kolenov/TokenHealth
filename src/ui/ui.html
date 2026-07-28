@@ -1,0 +1,319 @@
+<meta charset="utf-8" />
+<style>
+  :root {
+    /* Design tokens. No hex literals outside this block:
+       a tool that audits hardcoded colors must not contain any. */
+    --color-brand-10: #E0EEFD;
+    --color-brand-20: #AAD0F8;
+    --color-brand-40: #219CDE;
+    --color-brand-50: #007BBE;
+    --color-brand-80: #0F2D52;
+
+    --color-gray-0:   #FFFFFF;
+    --color-gray-10:  #F0F2F4;
+    --color-gray-20:  #D0D4DA;
+    --color-gray-30:  #989AA1;
+    --color-gray-40:  #797D89;
+    --color-gray-50:  #6A6F7C;
+    --color-gray-70:  #3F424D;
+    --color-gray-80:  #303237;
+
+    --color-red-10: #FFEFF1;
+    --color-red-50: #E0031F;
+    --color-green-10: #F1F8EA;
+    --color-green-60: #439C0B;
+    --color-green-70: #016E1C;
+    --color-yellow-10: #FEF6E6;
+    --color-yellow-40: #F57504;
+    --color-yellow-70: #7C2E01;
+
+    --sp-2: 2px;  --sp-4: 4px;  --sp-6: 6px;  --sp-8: 8px;
+    --sp-12: 12px; --sp-16: 16px; --sp-24: 24px; --sp-32: 32px;
+
+    --radius-s: 4px;  --radius-m: 6px;  --radius-l: 8px;
+    --radius-xl: 12px; --radius-xxl: 16px;
+
+    --fx-hover-shadow: 0 1px 2px rgba(0, 0, 0, 0.141);
+    --fx-focused-default: 0 0 0 3px var(--color-brand-20);
+
+    /* Surfaces follow the Figma editor theme; brand stays brand. */
+    --surface: var(--figma-color-bg, var(--color-gray-0));
+    --surface-alt: var(--figma-color-bg-secondary, var(--color-gray-10));
+    --text: var(--figma-color-text, var(--color-gray-80));
+    --text-muted: var(--figma-color-text-secondary, var(--color-gray-50));
+    --border: var(--figma-color-border, var(--color-gray-20));
+  }
+
+  * , *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Roboto', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    font-size: 13px;
+    line-height: 20px;
+    color: var(--text);
+    background: var(--surface);
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .view { display: none; flex-direction: column; height: 100%; }
+  .view.active { display: flex; }
+
+  .scroll { flex: 1; overflow-y: auto; padding: var(--sp-16); }
+
+  h1 { font-size: 16px; font-weight: 500; line-height: 24px; }
+  h2 {
+    font-size: 11px; font-weight: 500; letter-spacing: 0.6px;
+    text-transform: uppercase; color: var(--text-muted);
+    margin-bottom: var(--sp-8);
+  }
+  p  { font-size: 13px; color: var(--text-muted); }
+
+  .head {
+    padding: var(--sp-16);
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: flex-start; justify-content: space-between; gap: var(--sp-12);
+  }
+  .head-sub { font-size: 12px; color: var(--text-muted); margin-top: var(--sp-2); }
+
+  .card {
+    background: var(--surface-alt);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-xl);
+    padding: var(--sp-12);
+    margin-bottom: var(--sp-12);
+  }
+
+  .collection-row {
+    display: flex; justify-content: space-between; gap: var(--sp-8);
+    padding: var(--sp-6) 0; font-size: 12px;
+  }
+  .collection-row + .collection-row { border-top: 1px solid var(--border); }
+  .collection-modes { color: var(--text-muted); }
+
+  .opt { display: flex; gap: var(--sp-8); padding: var(--sp-8); border-radius: var(--radius-l); cursor: pointer; }
+  .opt:hover { background: var(--surface-alt); }
+  .opt input { margin-top: 3px; accent-color: var(--color-brand-50); }
+  .opt-title { font-size: 13px; }
+  .opt-desc  { font-size: 11px; color: var(--text-muted); }
+
+  label.field { display: block; font-size: 12px; margin-bottom: var(--sp-12); }
+  label.field span { display: block; margin-bottom: var(--sp-4); color: var(--text-muted); }
+  input[type="text"], input[type="number"], select {
+    width: 100%;
+    font-family: inherit; font-size: 13px;
+    padding: var(--sp-8);
+    color: var(--text);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-l);
+  }
+  input:focus-visible, select:focus-visible, .opt:focus-within {
+    outline: none;
+    box-shadow: var(--fx-focused-default);
+  }
+
+  details summary {
+    cursor: pointer; font-size: 12px; color: var(--text-muted);
+    padding: var(--sp-6) 0; list-style: none;
+  }
+  details summary::-webkit-details-marker { display: none; }
+  details summary::before { content: '▸ '; }
+  details[open] summary::before { content: '▾ '; }
+  details summary:focus-visible { outline: none; box-shadow: var(--fx-focused-default); border-radius: var(--radius-s); }
+
+  .actions {
+    padding: var(--sp-12) var(--sp-16);
+    border-top: 1px solid var(--border);
+    display: flex; gap: var(--sp-8); flex-wrap: wrap;
+  }
+
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center;
+    gap: var(--sp-8);
+    font-family: inherit; font-weight: 500; font-size: 13px; line-height: 20px;
+    padding: var(--sp-8) var(--sp-16);
+    min-height: 32px;
+    border: none; border-radius: var(--radius-l);
+    cursor: pointer;
+    transition: background 0.12s, box-shadow 0.15s ease;
+  }
+  .btn:focus-visible { outline: none; box-shadow: var(--fx-focused-default); }
+  .btn:disabled { cursor: not-allowed; opacity: 0.5; }
+
+  .btn-primary { background: var(--color-brand-50); color: var(--color-gray-0); flex: 1; }
+  .btn-primary:hover:not(:disabled) { background: var(--color-brand-40); box-shadow: var(--fx-hover-shadow); }
+
+  .btn-secondary {
+    background: transparent; color: var(--color-brand-50);
+    border: 1.5px solid var(--color-brand-50);
+  }
+  .btn-secondary:hover:not(:disabled) { background: var(--color-brand-10); }
+
+  .btn-ghost { background: transparent; color: var(--color-brand-50); }
+  .btn-ghost:hover:not(:disabled) { background: var(--color-brand-10); }
+
+  .progress-track {
+    height: 8px; background: var(--color-gray-10);
+    border-radius: var(--radius-s); overflow: hidden; margin: var(--sp-12) 0 var(--sp-8);
+  }
+  .progress-fill {
+    height: 100%; width: 0%;
+    background: var(--color-brand-50);
+    border-radius: var(--radius-s);
+    transition: width 0.2s ease;
+  }
+  .progress-label { font-size: 12px; color: var(--text-muted); }
+
+  .score-row { display: flex; align-items: center; gap: var(--sp-12); margin-bottom: var(--sp-12); }
+  .score-value { font-size: 32px; font-weight: 500; line-height: 1; }
+  .score-value.ok   { color: var(--color-green-70); }
+  .score-value.warn { color: var(--color-yellow-70); }
+  .score-value.fail { color: var(--color-red-50); }
+
+  .chips { display: flex; flex-wrap: wrap; gap: var(--sp-4); }
+  .chip {
+    font-size: 11px; font-weight: 500;
+    padding: var(--sp-2) var(--sp-8);
+    border-radius: var(--radius-s);
+    background: var(--color-gray-10); color: var(--color-gray-50);
+  }
+  .chip.ok   { background: var(--color-green-10);  color: var(--color-green-70); }
+  .chip.warn { background: var(--color-yellow-10); color: var(--color-yellow-70); }
+  .chip.fail { background: var(--color-red-10);    color: var(--color-red-50); }
+
+  .banner {
+    border-radius: var(--radius-l);
+    padding: var(--sp-12);
+    margin-bottom: var(--sp-12);
+    font-size: 12px;
+  }
+  .banner.warn { background: var(--color-yellow-10); color: var(--color-yellow-70); }
+  .banner.fail { background: var(--color-red-10);    color: var(--color-red-50); }
+
+  /* Inline confirmation. A native window.confirm() is silently suppressed in a
+     sandboxed plugin iframe — it returns false with no dialog — so the
+     destructive-action gate has to live in the UI itself. */
+  .confirm-bar {
+    display: flex; align-items: center; gap: var(--sp-8); flex-wrap: wrap;
+    padding: var(--sp-12) var(--sp-16);
+    border-top: 1px solid var(--border);
+    background: var(--color-brand-10);
+    color: var(--color-brand-80);
+    font-size: 12px;
+  }
+  .confirm-bar[hidden] { display: none; }
+  .confirm-bar p { flex: 1 1 200px; color: inherit; font-size: 12px; }
+  .btn-s { min-height: 24px; padding: var(--sp-4) var(--sp-12); font-size: 12px; }
+</style>
+
+<!-- Setup -->
+<section class="view active" id="view-setup">
+  <div class="head">
+    <div>
+      <h1 id="file-name">Loading…</h1>
+      <div class="head-sub" id="file-summary">Reading variable collections…</div>
+    </div>
+  </div>
+  <div class="scroll">
+    <h2>Collections</h2>
+    <div class="card" id="collections"></div>
+
+    <h2>Document scan</h2>
+    <div class="card" role="radiogroup" aria-label="Document scan scope">
+      <label class="opt"><input type="radio" name="scope" value="none" />
+        <span><span class="opt-title">Variables only</span><br /><span class="opt-desc">Fastest. Skips reuse counts and color overrides.</span></span></label>
+      <label class="opt"><input type="radio" name="scope" value="selection" />
+        <span><span class="opt-title">Selection</span><br /><span class="opt-desc">Only the currently selected layers.</span></span></label>
+      <label class="opt"><input type="radio" name="scope" value="page" />
+        <span><span class="opt-title">Current page</span><br /><span class="opt-desc">Recommended starting point.</span></span></label>
+      <label class="opt"><input type="radio" name="scope" value="document" />
+        <span><span class="opt-title">Whole document</span><br /><span class="opt-desc">Most complete. Slow on large files; cancellable.</span></span></label>
+    </div>
+
+    <details>
+      <summary>Advanced</summary>
+      <div class="card">
+        <label class="field"><span>Scoring mode</span>
+          <select id="scoring">
+            <option value="adaptive">Adaptive — exclude metrics that do not apply</option>
+            <option value="strict">Strict — SKILL.md formula, missing data counts as 0</option>
+          </select>
+        </label>
+        <label class="field"><span>Source file URL (optional — shown in the report header)</span>
+          <input type="text" id="file-url" placeholder="https://www.figma.com/design/…" />
+        </label>
+        <label class="field"><span>Max nodes to scan</span>
+          <input type="number" id="max-nodes" min="1000" step="1000" />
+        </label>
+        <label class="opt"><input type="checkbox" id="merge-spacing" />
+          <span><span class="opt-title">Treat padding and spacing as one role</span><br />
+          <span class="opt-desc">Off by default — they are usually distinct layout roles, and merging them produces false duplicates.</span></span></label>
+        <label class="opt"><input type="checkbox" id="exclude-hidden" />
+          <span><span class="opt-title">Exclude variables hidden from publishing</span></span></label>
+      </div>
+    </details>
+  </div>
+  <div class="actions">
+    <button class="btn btn-primary" id="run">Analyze</button>
+  </div>
+</section>
+
+<!-- Running -->
+<section class="view" id="view-running">
+  <div class="head"><div><h1>Analyzing…</h1><div class="head-sub" id="phase-label">Starting</div></div></div>
+  <div class="scroll">
+    <div class="progress-track"><div class="progress-fill" id="progress-fill"></div></div>
+    <div class="progress-label" id="progress-detail">Reading variables…</div>
+  </div>
+  <div class="actions"><button class="btn btn-secondary" id="cancel">Cancel</button></div>
+</section>
+
+<!-- Report -->
+<section class="view" id="view-report">
+  <div class="head">
+    <div>
+      <h1>Token health report</h1>
+      <div class="head-sub" id="report-sub"></div>
+    </div>
+  </div>
+  <div class="scroll">
+    <div id="report-banner"></div>
+    <div class="score-row">
+      <div class="score-value" id="score-value">—</div>
+      <div>
+        <div id="score-note" style="font-size:12px;color:var(--text-muted);"></div>
+      </div>
+    </div>
+    <div class="chips" id="report-chips"></div>
+  </div>
+  <div class="confirm-bar" id="insert-confirm" role="alertdialog" aria-labelledby="insert-confirm-text" hidden>
+    <p id="insert-confirm-text">
+      Insert a summary frame into the current page? This is the only action that modifies your file.
+    </p>
+    <button class="btn btn-primary btn-s" id="insert-yes" style="flex:0 0 auto;">Insert frame</button>
+    <button class="btn btn-ghost btn-s" id="insert-no">Cancel</button>
+  </div>
+  <div class="actions">
+    <button class="btn btn-primary" id="download-html">Download HTML</button>
+    <button class="btn btn-secondary" id="download-json">Download JSON</button>
+    <button class="btn btn-ghost" id="insert-canvas">Insert into file</button>
+    <button class="btn btn-ghost" id="rerun">Re-run</button>
+  </div>
+</section>
+
+<!-- Error / empty -->
+<section class="view" id="view-error">
+  <div class="head"><div><h1 id="error-title">Nothing to analyze</h1></div></div>
+  <div class="scroll">
+    <div class="banner fail" id="error-message"></div>
+    <p id="error-help"></p>
+  </div>
+  <div class="actions">
+    <button class="btn btn-secondary" id="error-back">Back</button>
+    <button class="btn btn-ghost" id="error-close">Close</button>
+  </div>
+</section>
+
+<!--BUNDLE-->

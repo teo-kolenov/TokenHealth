@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "Plugin Preview",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": ["-m", "http.server", "8090", "--directory", "/Users/macbook/AI projects/Design system/token-health-plugin/dist/preview"],
+      "port": 8090
+    }
+  ]
+}

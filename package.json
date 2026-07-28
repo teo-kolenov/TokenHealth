@@ -1,0 +1,19 @@
+{
+  "name": "token-health-plugin",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Figma plugin that audits design-system token architecture and renders a health dashboard.",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "watch": "node scripts/build.mjs --watch",
+    "typecheck": "tsc -p tsconfig.main.json --noEmit && tsc -p tsconfig.ui.json --noEmit",
+    "test": "node --experimental-strip-types --test test/*.test.ts",
+    "render": "node --experimental-strip-types scripts/render.ts"
+  },
+  "devDependencies": {
+    "@figma/plugin-typings": "^1.109.0",
+    "esbuild": "^0.24.0",
+    "typescript": "^5.7.0"
+  }
+}
