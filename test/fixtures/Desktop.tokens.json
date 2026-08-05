@@ -6,7 +6,7 @@
         "$type": "number",
         "$value": 25,
         "$extensions": {
-          "com.figma.variableId": "VariableID:2831:46949",
+          "com.figma.variableId": "VariableID:1042:42",
           "com.figma.scopes": [
             "ALL_SCOPES"
           ],
@@ -17,7 +17,7 @@
         "$type": "number",
         "$value": 19,
         "$extensions": {
-          "com.figma.variableId": "VariableID:2845:13898",
+          "com.figma.variableId": "VariableID:1043:43",
           "com.figma.scopes": [
             "ALL_SCOPES"
           ],
@@ -28,7 +28,7 @@
         "$type": "number",
         "$value": 16,
         "$extensions": {
-          "com.figma.variableId": "VariableID:2845:13900",
+          "com.figma.variableId": "VariableID:1044:44",
           "com.figma.scopes": [
             "ALL_SCOPES"
           ],
@@ -39,7 +39,7 @@
         "$type": "number",
         "$value": 16,
         "$extensions": {
-          "com.figma.variableId": "VariableID:2845:13901",
+          "com.figma.variableId": "VariableID:1045:45",
           "com.figma.scopes": [
             "ALL_SCOPES"
           ],
@@ -50,7 +50,7 @@
         "$type": "number",
         "$value": 14,
         "$extensions": {
-          "com.figma.variableId": "VariableID:2845:13902",
+          "com.figma.variableId": "VariableID:1046:46",
           "com.figma.scopes": [
             "ALL_SCOPES"
           ],
@@ -61,7 +61,7 @@
         "$type": "number",
         "$value": 12,
         "$extensions": {
-          "com.figma.variableId": "VariableID:2845:13903",
+          "com.figma.variableId": "VariableID:1047:47",
           "com.figma.scopes": [
             "ALL_SCOPES"
           ],
@@ -72,7 +72,7 @@
         "$type": "number",
         "$value": 11,
         "$extensions": {
-          "com.figma.variableId": "VariableID:3046:22573",
+          "com.figma.variableId": "VariableID:1048:48",
           "com.figma.scopes": [
             "ALL_SCOPES"
           ],
@@ -85,7 +85,7 @@
         "$type": "number",
         "$value": 0,
         "$extensions": {
-          "com.figma.variableId": "VariableID:4871:15761",
+          "com.figma.variableId": "VariableID:1049:49",
           "com.figma.scopes": [
             "ALL_SCOPES"
           ],
@@ -96,7 +96,7 @@
         "$type": "number",
         "$value": -0.10000000149011612,
         "$extensions": {
-          "com.figma.variableId": "VariableID:4871:15760",
+          "com.figma.variableId": "VariableID:1050:50",
           "com.figma.scopes": [
             "ALL_SCOPES"
           ],
@@ -107,7 +107,7 @@
         "$type": "number",
         "$value": -0.20000000298023224,
         "$extensions": {
-          "com.figma.variableId": "VariableID:4871:15762",
+          "com.figma.variableId": "VariableID:1051:51",
           "com.figma.scopes": [
             "ALL_SCOPES"
           ],
@@ -120,7 +120,7 @@
         "$type": "number",
         "$value": 500,
         "$extensions": {
-          "com.figma.variableId": "VariableID:4885:20889",
+          "com.figma.variableId": "VariableID:1052:52",
           "com.figma.scopes": [
             "ALL_SCOPES"
           ],
@@ -131,7 +131,7 @@
         "$type": "number",
         "$value": 400,
         "$extensions": {
-          "com.figma.variableId": "VariableID:4885:20887",
+          "com.figma.variableId": "VariableID:1053:53",
           "com.figma.scopes": [
             "ALL_SCOPES"
           ],

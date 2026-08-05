@@ -3,9 +3,10 @@
   "configurations": [
     {
       "name": "Plugin Preview",
-      "runtimeExecutable": "python3",
-      "runtimeArgs": ["-m", "http.server", "8090", "--directory", "/Users/macbook/AI projects/Design system/token-health-plugin/dist/preview"],
-      "port": 8090
+      "runtimeExecutable": "/bin/bash",
+      "runtimeArgs": ["--noprofile", "--norc", "-c", "exec /usr/bin/python3 -m http.server \"$PORT\" --directory ./dist/preview"],
+      "port": 8090,
+      "autoPort": true
     }
   ]
 }

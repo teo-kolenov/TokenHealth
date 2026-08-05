@@ -188,4 +188,36 @@ describe('organization anonymity', () => {
       }
     }
   });
+
+  test('no absolute home-directory paths are committed', () => {
+    // A hardcoded /Users/<name>/... path leaks the author's username and local
+    // directory layout, and breaks the repo for anyone who clones it.
+    const scanned = [
+      ...filesUnder(resolve(root, 'src')),
+      ...filesUnder(resolve(root, 'scripts')),
+      ...filesUnder(resolve(root, 'scripts'), '.mjs'),
+      resolve(root, '.claude/launch.json'),
+      resolve(root, 'package.json'),
+      resolve(root, 'manifest.json'),
+    ];
+    for (const file of scanned) {
+      const source = readFileSync(file, 'utf8');
+      assert.ok(
+        !/(\/Users\/|\/home\/|C:\\Users\\)/.test(source),
+        `${file} contains an absolute home-directory path`,
+      );
+    }
+  });
+
+  test('test fixtures carry no real Figma variable IDs', () => {
+    // The DTCG fixtures originated as a real export. Figma variable IDs are
+    // internal identifiers from a private file; the fixtures use synthetic
+    // sequential IDs (VariableID:1xxx:n) instead.
+    for (const file of filesUnder(resolve(root, 'test/fixtures'), '.json')) {
+      const ids = readFileSync(file, 'utf8').match(/"VariableID:\d+:\d+"/g) ?? [];
+      for (const id of ids) {
+        assert.match(id, /^"VariableID:1\d{3}:\d+"$/, `${file} contains a non-synthetic variable ID: ${id}`);
+      }
+    }
+  });
 });

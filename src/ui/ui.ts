@@ -23,6 +23,8 @@ let result: AnalysisResult | null = null;
 let input: NormalizedInput | null = null;
 let downloadHtml = '';
 let chunks: string[] = [];
+/** Auto-detected from figma.fileKey when available; not user-configurable. */
+let detectedFigmaFileUrl = '';
 
 function showView(name: 'setup' | 'running' | 'report' | 'error'): void {
   for (const view of Array.from(document.querySelectorAll('.view'))) view.classList.remove('active');
@@ -32,15 +34,21 @@ function showView(name: 'setup' | 'running' | 'report' | 'error'): void {
   if (confirmBar) confirmBar.hidden = true;
 }
 
+/**
+ * Scoring mode, max node budget, and the source file URL are no longer
+ * user-configurable — they always run at their defaults. The file URL is the
+ * one exception with a live value: it's auto-detected from figma.fileKey when
+ * Figma provides one, so it still ends up in the report header without a field.
+ */
 function readSettings(): Settings {
   const scope = (document.querySelector('input[name="scope"]:checked') as HTMLInputElement | null)?.value;
   return {
     scope: (scope as Settings['scope']) ?? DEFAULT_SETTINGS.scope,
-    scoring: $<HTMLSelectElement>('scoring').value as Settings['scoring'],
+    scoring: DEFAULT_SETTINGS.scoring,
     mergeSpacingRoles: $<HTMLInputElement>('merge-spacing').checked,
     excludeHidden: $<HTMLInputElement>('exclude-hidden').checked,
-    maxNodes: Number($<HTMLInputElement>('max-nodes').value) || DEFAULT_SETTINGS.maxNodes,
-    figmaFileUrl: $<HTMLInputElement>('file-url').value.trim(),
+    maxNodes: DEFAULT_SETTINGS.maxNodes,
+    figmaFileUrl: detectedFigmaFileUrl,
   };
 }
 
@@ -48,11 +56,8 @@ function applySettings(next: Settings): void {
   settings = next;
   const radio = document.querySelector(`input[name="scope"][value="${next.scope}"]`) as HTMLInputElement | null;
   if (radio) radio.checked = true;
-  $<HTMLSelectElement>('scoring').value = next.scoring;
   $<HTMLInputElement>('merge-spacing').checked = next.mergeSpacingRoles;
   $<HTMLInputElement>('exclude-hidden').checked = next.excludeHidden;
-  $<HTMLInputElement>('max-nodes').value = String(next.maxNodes);
-  $<HTMLInputElement>('file-url').value = next.figmaFileUrl;
 }
 
 /** Downloads must happen inside the click handler to satisfy the gesture rule. */
@@ -78,29 +83,46 @@ function statusOf(value: number | null, okAt: number, warnAt: number): 'ok' | 'w
   return 'fail';
 }
 
-function chip(text: string, status: string): string {
-  const safe = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-  return `<span class="chip ${status}">${safe}</span>`;
+/** Ring fill color by health-score status: red = negative, orange = average, green = positive. */
+const SCORE_RING_COLOR: Record<'ok' | 'warn' | 'fail', string> = {
+  ok: 'var(--color-green-60)',
+  warn: 'var(--color-yellow-40)',
+  fail: 'var(--color-red-50)',
+};
+
+function escapeHtml(text: string): string {
+  return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+function chip(value: string, label: string, status: string): string {
+  return (
+    `<div class="chip ${status}">` +
+    `<div class="chip-value">${escapeHtml(value)}</div>` +
+    `<div class="chip-label">${escapeHtml(label)}</div>` +
+    `</div>`
+  );
 }
 
 function renderReport(analysis: AnalysisResult): void {
   const m = analysis.metrics;
 
   $('score-value').textContent = `${analysis.score.score}%`;
-  $('score-value').className = `score-value ${analysis.score.label}`;
+  const ring = $('score-ring');
+  ring.style.setProperty('--score', String(analysis.score.score));
+  ring.style.setProperty('--ring-color', SCORE_RING_COLOR[analysis.score.label]);
   $('score-note').textContent = analysis.score.note;
   $('report-sub').textContent =
     `${m.totalTokens} tokens · ${m.totalCollections} collection${m.totalCollections === 1 ? '' : 's'}` +
-    (m.modeNames.length ? ` · ${m.modeNames.join(' / ')}` : '');
+    (m.modeNames.length ? ` · ${m.modeNames.length} mode${m.modeNames.length === 1 ? '' : 's'}` : '');
 
   const pct = (v: number | null) => (v === null ? 'N/A' : `${v.toFixed(0)}%`);
   $('report-chips').innerHTML = [
-    chip(`Alias ${pct(m.aliasLayerCoverage)}`, statusOf(m.aliasLayerCoverage, 90, 60)),
-    chip(`Naming ${pct(m.namingCompliance)}`, statusOf(m.namingCompliance, 100, 90)),
-    chip(`Modes ${pct(m.modeCoverage)}`, statusOf(m.modeCoverage, 100, 75)),
-    chip(`${m.duplicateBreakdown.high} high duplicates`, m.duplicateBreakdown.high === 0 ? 'ok' : 'fail'),
-    chip(`${m.typos.length} typos`, m.typos.length === 0 ? 'ok' : 'warn'),
-    chip(`${m.directOverrideCount} overrides`, m.directOverrideCount === 0 ? 'ok' : 'warn'),
+    chip(pct(m.aliasLayerCoverage), 'Alias', statusOf(m.aliasLayerCoverage, 90, 60)),
+    chip(pct(m.namingCompliance), 'Naming', statusOf(m.namingCompliance, 100, 90)),
+    chip(pct(m.modeCoverage), 'Modes', statusOf(m.modeCoverage, 100, 75)),
+    chip(String(m.duplicateBreakdown.high), 'High duplicates', m.duplicateBreakdown.high === 0 ? 'ok' : 'fail'),
+    chip(String(m.orphanedAliases), 'Orphans', m.orphanedAliases === 0 ? 'ok' : 'fail'),
+    chip(String(m.directOverrideCount), 'Overrides', m.directOverrideCount === 0 ? 'ok' : 'warn'),
   ].join('');
 
   const banner = $('report-banner');
@@ -167,9 +189,7 @@ window.onmessage = (event: MessageEvent) => {
     case 'INIT': {
       applySettings(message.settings);
       $('file-name').textContent = message.fileName;
-      if (message.figmaFileUrl && !message.settings.figmaFileUrl) {
-        $<HTMLInputElement>('file-url').value = message.figmaFileUrl;
-      }
+      detectedFigmaFileUrl = message.figmaFileUrl || message.settings.figmaFileUrl || '';
 
       const totalVariables = message.collections.reduce((sum, c) => sum + c.variableCount, 0);
       const totalModes = new Set(message.collections.flatMap((c) => c.modes)).size;
@@ -265,13 +285,6 @@ $('download-html').addEventListener('click', () => {
   if (!result) return;
   download(`${slug(result.input.meta.projectName)}-token-health.html`, 'text/html', downloadHtml);
   send({ type: 'NOTIFY', message: 'Dashboard downloaded.' });
-});
-
-$('download-json').addEventListener('click', () => {
-  if (!input) return;
-  const date = input.meta.generatedAt ?? new Date().toISOString().slice(0, 10);
-  download(`${slug(input.meta.projectName)}-token-health-${date}.json`, 'application/json', JSON.stringify(input, null, 2));
-  send({ type: 'NOTIFY', message: 'Normalized JSON downloaded.' });
 });
 
 /**

@@ -112,7 +112,7 @@ async function run(settings: Settings): Promise<void> {
   }
 }
 
-figma.showUI(__html__, { width: 540, height: 720, themeColors: true });
+figma.showUI(__html__, { width: 346, height: 576, themeColors: true });
 
 figma.ui.onmessage = async (message: UiToMain) => {
   switch (message.type) {
