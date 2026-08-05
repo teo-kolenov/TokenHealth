@@ -60,7 +60,14 @@
   .view { display: none; flex-direction: column; height: 100%; }
   .view.active { display: flex; }
 
-  .scroll { flex: 1; overflow-y: auto; padding: var(--sp-16); }
+  /* Scrolling stays fully functional (wheel, trackpad, keyboard); only the
+     scrollbar track/thumb chrome is hidden. */
+  .scroll {
+    flex: 1; overflow-y: auto; padding: var(--sp-16);
+    scrollbar-width: none;     /* Firefox */
+    -ms-overflow-style: none;  /* legacy Edge/IE */
+  }
+  .scroll::-webkit-scrollbar { display: none; } /* Chrome, Safari, modern Edge */
 
   h1 { font-size: 16px; font-weight: 500; line-height: 24px; }
   h2 {
@@ -98,18 +105,7 @@
   .opt-title { font-size: 13px; }
   .opt-desc  { font-size: 11px; color: var(--text-muted); }
 
-  label.field { display: block; font-size: 12px; margin-bottom: var(--sp-12); }
-  label.field span { display: block; margin-bottom: var(--sp-4); color: var(--text-muted); }
-  input[type="text"], input[type="number"], select {
-    width: 100%;
-    font-family: inherit; font-size: 13px;
-    padding: var(--sp-8);
-    color: var(--text);
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-l);
-  }
-  input:focus-visible, select:focus-visible, .opt:focus-within {
+  .opt:focus-within {
     outline: none;
     box-shadow: var(--fx-focused-default);
   }
@@ -128,6 +124,8 @@
     border-top: 1px solid var(--border);
     display: flex; gap: var(--sp-8); flex-wrap: wrap;
   }
+  /* All buttons in this row take equal width, regardless of variant. */
+  .actions-even .btn { flex: 1 1 0; }
 
   .btn {
     display: inline-flex; align-items: center; justify-content: center;
@@ -166,19 +164,46 @@
   }
   .progress-label { font-size: 12px; color: var(--text-muted); }
 
-  .score-row { display: flex; align-items: center; gap: var(--sp-12); margin-bottom: var(--sp-12); }
-  .score-value { font-size: 32px; font-weight: 500; line-height: 1; }
-  .score-value.ok   { color: var(--color-green-70); }
-  .score-value.warn { color: var(--color-yellow-70); }
-  .score-value.fail { color: var(--color-red-50); }
+  .score-row { display: flex; align-items: center; gap: var(--sp-16); margin-bottom: var(--sp-12); }
+  .score-note { font-size: 12px; color: var(--text-muted); }
 
-  .chips { display: flex; flex-wrap: wrap; gap: var(--sp-4); }
+  /* Ring fill is driven by --score (0-100) and --ring-color, set from JS per
+     health-score status: red = fail, orange = warn, green = ok. */
+  .score-ring {
+    --score: 0;
+    --ring-color: var(--color-gray-30);
+    flex-shrink: 0;
+    width: 105px; height: 105px;
+    border-radius: 50%;
+    background: conic-gradient(
+      var(--ring-color) 0% calc(var(--score) * 1%),
+      var(--color-gray-10) calc(var(--score) * 1%) 100%
+    );
+    display: flex; align-items: center; justify-content: center;
+  }
+  .score-ring-inner {
+    width: 78px; height: 78px;
+    border-radius: 50%;
+    background: var(--surface);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+  }
+  .score-ring-value { font-size: 24px; font-weight: 700; line-height: 1; color: var(--text); }
+  .score-ring-label { font-size: 11px; color: var(--text-muted); margin-top: var(--sp-2); }
+
+  .chips { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--sp-8); }
   .chip {
-    font-size: 11px; font-weight: 500;
-    padding: var(--sp-2) var(--sp-8);
-    border-radius: var(--radius-s);
+    height: 78px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: var(--sp-4);
+    border-radius: var(--radius-l);
     background: var(--color-gray-10); color: var(--color-gray-50);
   }
+  .chip-value { font-size: 16px; font-weight: 500; line-height: 1.15; }
+  .chip-label { font-size: 10px; line-height: 1.25; margin-top: var(--sp-2); }
   .chip.ok   { background: var(--color-green-10);  color: var(--color-green-70); }
   .chip.warn { background: var(--color-yellow-10); color: var(--color-yellow-70); }
   .chip.fail { background: var(--color-red-10);    color: var(--color-red-50); }
@@ -235,18 +260,6 @@
     <details>
       <summary>Advanced</summary>
       <div class="card">
-        <label class="field"><span>Scoring mode</span>
-          <select id="scoring">
-            <option value="adaptive">Adaptive — exclude metrics that do not apply</option>
-            <option value="strict">Strict — SKILL.md formula, missing data counts as 0</option>
-          </select>
-        </label>
-        <label class="field"><span>Source file URL (optional — shown in the report header)</span>
-          <input type="text" id="file-url" placeholder="https://www.figma.com/design/…" />
-        </label>
-        <label class="field"><span>Max nodes to scan</span>
-          <input type="number" id="max-nodes" min="1000" step="1000" />
-        </label>
         <label class="opt"><input type="checkbox" id="merge-spacing" />
           <span><span class="opt-title">Treat padding and spacing as one role</span><br />
           <span class="opt-desc">Off by default — they are usually distinct layout roles, and merging them produces false duplicates.</span></span></label>
@@ -272,19 +285,23 @@
 
 <!-- Report -->
 <section class="view" id="view-report">
-  <div class="head">
+  <div class="head" style="align-items:center;">
     <div>
       <h1>Token health report</h1>
       <div class="head-sub" id="report-sub"></div>
     </div>
+    <button class="btn btn-secondary" id="rerun" style="flex:0 0 auto;">Retry</button>
   </div>
   <div class="scroll">
     <div id="report-banner"></div>
     <div class="score-row">
-      <div class="score-value" id="score-value">—</div>
-      <div>
-        <div id="score-note" style="font-size:12px;color:var(--text-muted);"></div>
+      <div class="score-ring" id="score-ring">
+        <div class="score-ring-inner">
+          <span class="score-ring-value" id="score-value">—</span>
+          <span class="score-ring-label">health</span>
+        </div>
       </div>
+      <div id="score-note" class="score-note"></div>
     </div>
     <div class="chips" id="report-chips"></div>
   </div>
@@ -295,11 +312,9 @@
     <button class="btn btn-primary btn-s" id="insert-yes" style="flex:0 0 auto;">Insert frame</button>
     <button class="btn btn-ghost btn-s" id="insert-no">Cancel</button>
   </div>
-  <div class="actions">
-    <button class="btn btn-primary" id="download-html">Download HTML</button>
-    <button class="btn btn-secondary" id="download-json">Download JSON</button>
-    <button class="btn btn-ghost" id="insert-canvas">Insert into file</button>
-    <button class="btn btn-ghost" id="rerun">Re-run</button>
+  <div class="actions actions-even">
+    <button class="btn btn-primary" id="insert-canvas">Insert into file</button>
+    <button class="btn btn-secondary" id="download-html">Download HTML</button>
   </div>
 </section>
 
