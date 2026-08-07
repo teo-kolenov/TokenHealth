@@ -1,6 +1,7 @@
 import TEMPLATE from '../template.html';
 import { analyze } from '../analysis/analyzer.ts';
 import { renderDashboard } from '../analysis/render.ts';
+import { deriveKeyFindings } from '../analysis/findings.ts';
 import { DEFAULT_SETTINGS, type CanvasSummary, type MainToUi, type Settings, type UiToMain } from '../shared/messages.ts';
 import type { AnalysisResult, NormalizedInput } from '../analysis/types.ts';
 
@@ -125,6 +126,13 @@ function renderReport(analysis: AnalysisResult): void {
     chip(String(m.directOverrideCount), 'Overrides', m.directOverrideCount === 0 ? 'ok' : 'warn'),
   ].join('');
 
+  // Same source as the inserted canvas frame and the downloaded dashboard, so
+  // all three name the same problems.
+  const findings = deriveKeyFindings(analysis);
+  $('report-findings').innerHTML = findings.length
+    ? `<ul class="findings-list">${findings.map((f) => `<li>${escapeHtml(f)}</li>`).join('')}</ul>`
+    : `<p class="findings-empty">No blocking issues found in this scope.</p>`;
+
   const banner = $('report-banner');
   if (analysis.input.meta.scanTruncated) {
     banner.innerHTML = `<div class="banner warn">The scan hit the node limit, so reuse and override data are partial. Raise the limit in Advanced for a complete pass.</div>`;
@@ -141,18 +149,9 @@ function canvasSummary(analysis: AnalysisResult): CanvasSummary {
   const m = analysis.metrics;
   const pct = (v: number | null) => (v === null ? 'N/A' : `${v.toFixed(0)}%`);
 
-  const findings: string[] = [];
-  for (const typo of m.typos.slice(0, 2)) findings.push(`Possible typo: "${typo.token.name}" vs "${typo.nearest.name}"`);
-  for (const dup of m.duplicates.filter((d) => d.severity === 'high').slice(0, 2)) {
-    findings.push(`Duplicate: ${dup.a.name} and ${dup.b.name}`);
-  }
-  if (m.namingFailures.length > 0) {
-    findings.push(`${m.namingFailures.length} tokens fail the naming convention (${m.namingFailures[0].reason})`);
-  }
-  for (const parallel of m.parallelScales.slice(0, 1)) {
-    findings.push(`${parallel.groupA} and ${parallel.groupB} are parallel scales sharing ${parallel.sharedSteps} values`);
-  }
-  if (m.directOverrideCount > 0) findings.push(`${m.directOverrideCount} hardcoded color literals found`);
+  // Shared with the dashboard's "Key findings" section so the inserted frame
+  // and the downloaded report always name the same problems.
+  const findings = deriveKeyFindings(analysis);
 
   const color: [number, number, number] =
     analysis.score.label === 'ok' ? [0.0039, 0.4314, 0.1098]
@@ -196,14 +195,6 @@ window.onmessage = (event: MessageEvent) => {
       $('file-summary').textContent =
         `${message.collections.length} collection${message.collections.length === 1 ? '' : 's'} · ` +
         `${totalModes} mode${totalModes === 1 ? '' : 's'} · ${totalVariables} variables`;
-
-      $('collections').innerHTML = message.collections
-        .map(
-          (c) =>
-            `<div class="collection-row"><span>${c.name.replace(/</g, '&lt;')}</span>` +
-            `<span class="collection-modes">${c.variableCount} vars · ${c.modes.join(' / ')}</span></div>`,
-        )
-        .join('');
 
       if (!message.hasVariables) {
         $('error-title').textContent = 'No local variables found';

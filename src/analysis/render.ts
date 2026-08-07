@@ -1,4 +1,5 @@
 import type { AnalysisResult, DirectOverride, Metrics, Severity } from './types.ts';
+import { deriveKeyFindings } from './findings.ts';
 
 export interface RenderOptions {
   /**
@@ -488,6 +489,57 @@ function buildInventoryRows(result: AnalysisResult): string {
 }
 
 /* ------------------------------------------------------------------ */
+/* Key findings — appended below the templated sections                */
+/* ------------------------------------------------------------------ */
+
+/**
+ * The same headline list the inserted canvas frame shows, rendered as a final
+ * dashboard section.
+ *
+ * This is built here rather than added to `template.html` on purpose: the
+ * template is a verbatim copy of the CLI skill's, and a test asserts it has not
+ * drifted. Adding a plugin-only section by injection keeps that guarantee
+ * intact — the skill's own output is unaffected.
+ */
+function buildKeyFindingsSection(result: AnalysisResult): string {
+  const findings = deriveKeyFindings(result);
+
+  const body = findings.length
+    ? `<ul style="margin:0;padding-left:var(--sp-20);display:flex;flex-direction:column;gap:var(--sp-8);">\n` +
+      findings
+        .map(
+          (finding) =>
+            `            <li style="font-size:13px;line-height:20px;color:var(--c-gray-70);">${escapeHtml(finding)}</li>`,
+        )
+        .join('\n') +
+      `\n          </ul>`
+    : `<p style="font-size:13px;line-height:20px;color:var(--c-gray-50);">No blocking issues found in this scope.</p>`;
+
+  return `    <!-- ━━━ KEY FINDINGS ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ -->
+    <section class="section">
+      <h2 class="section-title">Key Findings</h2>
+      <div class="panel">
+          ${body}
+      </div>
+    </section>
+
+`;
+}
+
+/**
+ * Place the section immediately before the attribution footer — i.e. after all
+ * existing dashboard content. If the template ever loses that anchor the
+ * section is skipped rather than spliced somewhere wrong.
+ */
+const FOOTER_ANCHOR = /(?:[ \t]*<!--[^\n]*FOOTER[^\n]*-->\r?\n)?[ \t]*<footer class="dashboard-footer"/;
+
+function injectKeyFindings(html: string, section: string): string {
+  const at = html.search(FOOTER_ANCHOR);
+  if (at === -1) return html;
+  return html.slice(0, at) + section + html.slice(at);
+}
+
+/* ------------------------------------------------------------------ */
 /* Main entry                                                          */
 /* ------------------------------------------------------------------ */
 
@@ -585,6 +637,10 @@ export function renderDashboard(result: AnalysisResult, template: string, option
   for (const [key, value] of Object.entries(replacements)) {
     html = html.split(`{{${key}}}`).join(value);
   }
+
+  // After substitution, so a finding whose text contains {{…}} is never treated
+  // as a placeholder.
+  html = injectKeyFindings(html, buildKeyFindingsSection(result));
 
   if (options.inlineFontsOnly) {
     html = html

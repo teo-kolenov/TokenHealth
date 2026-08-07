@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url';
 
 import { analyze } from '../src/analysis/analyzer.ts';
 import { renderDashboard, PLACEHOLDERS } from '../src/analysis/render.ts';
+import { deriveKeyFindings } from '../src/analysis/findings.ts';
 import { computeScore, duplicateFactor, WEIGHTS, scoreColor } from '../src/analysis/score.ts';
 import { NAMING_RE, nameFailureReason, damerauLevenshtein, findTypos } from '../src/analysis/naming.ts';
 import { findDuplicates, canonicalize } from '../src/analysis/duplicates.ts';
@@ -494,5 +495,95 @@ describe('end-to-end on the real 39% file', () => {
       { projectName: 'Example Sizes', collectionName: 'Sizes' },
     );
     assert.deepEqual(analyze(merged).metrics.modeNames, ['Mobile', 'Desktop']);
+  });
+});
+
+/* ================================================================== */
+describe('key findings', () => {
+  const dtcg = () =>
+    importDtcg([{ data: fixture('Mobile.tokens.json') }], { projectName: 'Example Sizes', collectionName: 'Sizes' });
+
+  const render = (input: NormalizedInput) =>
+    renderDashboard(analyze(input), TEMPLATE, { generatedAt: '2026-07-23' });
+
+  test('the derived list surfaces the real defects', () => {
+    const findings = deriveKeyFindings(analyze(dtcg()));
+    assert.ok(findings.length > 0);
+    assert.ok(findings.some((f) => /raduis/.test(f)), 'the typo should headline');
+    assert.ok(findings.some((f) => /fail the naming convention/.test(f)));
+    assert.ok(findings.some((f) => /parallel scales/.test(f)));
+  });
+
+  test('the dashboard renders a Key Findings section', () => {
+    const html = render(dtcg());
+    assert.ok(html.includes('>Key Findings<'), 'section heading must be present');
+    for (const finding of deriveKeyFindings(analyze(dtcg()))) {
+      // Text is escaped on the way in, so compare against the escaped form.
+      const escaped = finding.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+      assert.ok(html.includes(escaped), `dashboard is missing finding: ${finding}`);
+    }
+  });
+
+  test('the section sits below all other content, just above the footer', () => {
+    const html = render(dtcg());
+    const inventory = html.indexOf('Token Inventory');
+    const findings = html.indexOf('>Key Findings<');
+    const footer = html.indexOf('class="dashboard-footer"');
+
+    assert.ok(inventory > 0 && findings > 0 && footer > 0, 'all three anchors must exist');
+    assert.ok(findings > inventory, 'Key Findings must come after the last templated section');
+    assert.ok(findings < footer, 'Key Findings must come before the attribution footer');
+  });
+
+  test('the section is inside the dashboard container, not loose after it', () => {
+    const html = render(dtcg());
+    const findings = html.indexOf('>Key Findings<');
+    // The container closes just before </body>; the section must precede that.
+    assert.ok(findings < html.indexOf('</body>'), 'section escaped the document body');
+    const tail = html.slice(findings);
+    assert.ok(/<\/section>/.test(tail), 'section must be closed');
+  });
+
+  test('a clean token set still gets the section, with a positive message', () => {
+    const clean: NormalizedInput = {
+      meta: { projectName: 'Clean', sourceFidelity: 'figma-plugin' },
+      collections: [
+        { name: 'Colors', groups: [{ name: 'brand', type: 'COLOR', tokens: [{ name: 'color-brand-50', value: '#007BBE' }] }] },
+      ],
+    };
+    assert.deepEqual(deriveKeyFindings(analyze(clean)), []);
+    const html = render(clean);
+    assert.ok(html.includes('>Key Findings<'));
+    assert.ok(html.includes('No blocking issues found'));
+  });
+
+  test('findings built from user-controlled names are escaped', () => {
+    const steps = [2, 4, 8, 12];
+    const hostile: NormalizedInput = {
+      meta: { projectName: 'Hostile', sourceFidelity: 'figma-plugin' },
+      collections: [
+        {
+          name: 'Sizes',
+          groups: [
+            {
+              name: '<script>alert(1)</script>',
+              type: 'FLOAT',
+              tokens: steps.map((v) => ({ name: `a-${v}`, value: v })),
+            },
+            { name: 'spacing', type: 'FLOAT', tokens: steps.map((v) => ({ name: `spacing-${v}`, value: v })) },
+          ],
+        },
+      ],
+    };
+    // Confirm the hostile name actually reaches a finding, or the test proves nothing.
+    assert.ok(deriveKeyFindings(analyze(hostile)).some((f) => f.includes('<script>')));
+    const html = render(hostile);
+    assert.ok(!html.includes('<script>alert(1)</script>'), 'raw script tag leaked into the dashboard');
+    assert.ok(html.includes('&lt;script&gt;alert(1)&lt;/script&gt;'), 'expected the escaped form');
+  });
+
+  test('injection does not disturb placeholder substitution', () => {
+    const html = render(dtcg());
+    assert.equal(html.match(/\{\{[a-zA-Z]+\}\}/g), null);
   });
 });
