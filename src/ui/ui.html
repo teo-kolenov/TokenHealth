@@ -228,7 +228,7 @@
      sandboxed plugin iframe — it returns false with no dialog — so the
      destructive-action gate has to live in the UI itself. */
   .confirm-bar {
-    display: flex; align-items: center; gap: var(--sp-8); flex-wrap: wrap;
+    display: flex; align-items: flex-start; gap: var(--sp-12); flex-wrap: wrap;
     padding: var(--sp-12) var(--sp-16);
     border-top: 1px solid var(--border);
     background: var(--color-brand-10);
@@ -237,6 +237,10 @@
   }
   .confirm-bar[hidden] { display: none; }
   .confirm-bar p { flex: 1 1 200px; color: inherit; font-size: 12px; }
+  /* Stretch both buttons to the width of the wider one (Insert frame), which
+     also centers Cancel under it — equal-width stacked items share both
+     edges, so there is no separate alignment step needed. */
+  .confirm-actions { display: flex; flex-direction: column; align-items: stretch; gap: var(--sp-6); flex: 0 0 auto; }
   .btn-s { min-height: 24px; padding: var(--sp-4) var(--sp-12); font-size: 12px; }
 </style>
 
@@ -317,8 +321,10 @@
     <p id="insert-confirm-text">
       Insert a summary frame into the current page? This is the only action that modifies your file.
     </p>
-    <button class="btn btn-primary btn-s" id="insert-yes" style="flex:0 0 auto;">Insert frame</button>
-    <button class="btn btn-ghost btn-s" id="insert-no">Cancel</button>
+    <div class="confirm-actions">
+      <button class="btn btn-primary btn-s" id="insert-yes">Insert frame</button>
+      <button class="btn btn-ghost btn-s" id="insert-no">Cancel</button>
+    </div>
   </div>
   <div class="actions actions-even">
     <button class="btn btn-primary" id="insert-canvas">Insert into file</button>
