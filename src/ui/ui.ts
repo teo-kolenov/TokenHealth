@@ -2,6 +2,7 @@ import TEMPLATE from '../template.html';
 import { analyze } from '../analysis/analyzer.ts';
 import { renderDashboard } from '../analysis/render.ts';
 import { deriveKeyFindings } from '../analysis/findings.ts';
+import { tallyTokens } from '../analysis/tally.ts';
 import { DEFAULT_SETTINGS, type CanvasSummary, type MainToUi, type Settings, type UiToMain } from '../shared/messages.ts';
 import type { AnalysisResult, NormalizedInput } from '../analysis/types.ts';
 
@@ -111,7 +112,33 @@ function renderReport(analysis: AnalysisResult): void {
   const ring = $('score-ring');
   ring.style.setProperty('--score', String(analysis.score.score));
   ring.style.setProperty('--ring-color', SCORE_RING_COLOR[analysis.score.label]);
-  $('score-note').textContent = analysis.score.note;
+
+  const tally = tallyTokens(analysis);
+  // `tally.info` is still computed — informational tokens are deliberately not
+  // folded into Passed, since they do carry a finding — it is just not shown
+  // here. Bars stay proportional to the token total, so the three visible rows
+  // are not expected to fill the track between them.
+  const tallyRows: [label: string, count: number, status: string][] = [
+    ['Passed', tally.passed, 'ok'],
+    ['Warnings', tally.warnings, 'warn'],
+    ['Errors', tally.errors, 'fail'],
+  ];
+  $('report-tally').innerHTML = tallyRows
+    .map(([label, count, status]) => {
+      const share = tally.total > 0 ? (count / tally.total) * 100 : 0;
+      // A non-zero count must stay visible: 8 errors out of 900 tokens rounds
+      // to a sliver the eye cannot find, and the bar is the thing being scanned.
+      const width = count > 0 ? Math.max(5, share) : 0;
+      return (
+        `<div class="tally-row">` +
+        `<span class="tally-label">${label}</span>` +
+        `<div class="tally-track"><div class="tally-fill ${status}" style="width:${width.toFixed(1)}%"></div></div>` +
+        `<span class="tally-count">${count}</span>` +
+        `</div>`
+      );
+    })
+    .join('');
+
   $('report-sub').textContent =
     `${m.totalTokens} tokens · ${m.totalCollections} collection${m.totalCollections === 1 ? '' : 's'}` +
     (m.modeNames.length ? ` · ${m.modeNames.length} mode${m.modeNames.length === 1 ? '' : 's'}` : '');

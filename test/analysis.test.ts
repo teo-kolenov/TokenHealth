@@ -7,6 +7,7 @@ import { fileURLToPath } from 'node:url';
 import { analyze } from '../src/analysis/analyzer.ts';
 import { renderDashboard, PLACEHOLDERS } from '../src/analysis/render.ts';
 import { deriveKeyFindings } from '../src/analysis/findings.ts';
+import { tallyTokens } from '../src/analysis/tally.ts';
 import { computeScore, duplicateFactor, WEIGHTS, scoreColor } from '../src/analysis/score.ts';
 import { NAMING_RE, nameFailureReason, damerauLevenshtein, findTypos } from '../src/analysis/naming.ts';
 import { findDuplicates, canonicalize } from '../src/analysis/duplicates.ts';
@@ -585,5 +586,152 @@ describe('key findings', () => {
   test('injection does not disturb placeholder substitution', () => {
     const html = render(dtcg());
     assert.equal(html.match(/\{\{[a-zA-Z]+\}\}/g), null);
+  });
+});
+
+/* ================================================================== */
+describe('severity tally', () => {
+  const dtcg = () =>
+    importDtcg([{ data: fixture('Mobile.tokens.json') }], { projectName: 'Example Sizes', collectionName: 'Sizes' });
+
+  test('the buckets always sum to the token total', () => {
+    for (const input of [dtcg(), fixture('sample-token-input.json') as NormalizedInput]) {
+      const t = tallyTokens(analyze(input));
+      assert.equal(
+        t.passed + t.warnings + t.errors,
+        t.total,
+        'a token was double-counted or lost between buckets',
+      );
+    }
+  });
+
+  test('REGRESSION: a group-level parallel scale does not demote its tokens', () => {
+    // Parallel scales flagged every member of both groups, so on a sizing
+    // collection padding + spacing + radius covered the whole file and Passed
+    // rendered as 0 — the bar chart showed nothing healthy in a set whose only
+    // real defects were naming ones.
+    const t = tallyTokens(analyze(dtcg()));
+    const m = analyze(dtcg()).metrics;
+
+    assert.ok(m.parallelScales.length > 0, 'fixture must actually contain parallel scales');
+    assert.ok(t.passed > 0, 'tokens whose only "finding" is a parallel scale must count as passed');
+    assert.equal(t.warnings, m.namingFailures.length, 'warnings should be the naming failures, nothing more');
+    assert.equal(t.passed, t.total - t.warnings - t.errors);
+  });
+
+  test('an informational duplicate does not demote a token', () => {
+    // duplicates.ts weights info at 0 toward the score; the tally must agree.
+    const input: NormalizedInput = {
+      meta: { projectName: 'x', sourceFidelity: 'figma-plugin' },
+      collections: [
+        // Same canonical role (brand -> primary) and value, different names, and
+        // one side is the primitive layer — that combination is what scores 'info'.
+        { name: 'Primitives', groups: [{ name: 'global/brand', type: 'COLOR', tokens: [{ name: 'color-brand-50', value: '#007BBE' }] }] },
+        { name: 'Semantic', groups: [{ name: 'action', type: 'COLOR', tokens: [{ name: 'color-primary-50', value: '#007BBE' }] }] },
+      ],
+    };
+    const result = analyze(input);
+    const infoDupes = result.metrics.duplicates.filter((d) => d.severity === 'info');
+    assert.ok(infoDupes.length > 0, 'fixture must produce an info-severity duplicate');
+    assert.deepEqual(tallyTokens(result), { passed: 2, warnings: 0, errors: 0, total: 2 });
+  });
+
+  test('a clean token set is all passed', () => {
+    const clean: NormalizedInput = {
+      meta: { projectName: 'Clean', sourceFidelity: 'figma-plugin' },
+      collections: [
+        { name: 'Colors', groups: [{ name: 'brand', type: 'COLOR', tokens: [{ name: 'color-brand-50', value: '#007BBE' }] }] },
+      ],
+    };
+    assert.deepEqual(tallyTokens(analyze(clean)), { passed: 1, warnings: 0, errors: 0, total: 1 });
+  });
+
+  test('a broken alias counts as an error', () => {
+    const input: NormalizedInput = {
+      meta: { projectName: 'x', sourceFidelity: 'figma-plugin' },
+      collections: [
+        {
+          name: 'Semantic',
+          groups: [
+            {
+              name: 'surface',
+              type: 'COLOR',
+              tokens: [
+                { name: 'color-surface-a', value: '#FFFFFF', aliasOf: 'gone', aliasInAnyMode: true, aliasBroken: true },
+                { name: 'color-surface-b', value: '#000000' },
+              ],
+            },
+          ],
+        },
+      ],
+    };
+    assert.deepEqual(tallyTokens(analyze(input)), { passed: 1, warnings: 0, errors: 1, total: 2 });
+  });
+
+  test('error precedence clears the same token from warnings', () => {
+    const input: NormalizedInput = {
+      meta: { projectName: 'x', sourceFidelity: 'figma-plugin' },
+      collections: [
+        {
+          name: 'Colors',
+          groups: [
+            {
+              name: 'semantic',
+              type: 'COLOR',
+              tokens: [
+                { name: 'color-brand-primary', value: '#007BBE' },
+                { name: 'color-primary-brand', value: '#007BBE' },
+              ],
+            },
+          ],
+        },
+      ],
+    };
+    const t = tallyTokens(analyze(input));
+    assert.equal(t.errors, 2, 'both halves of a high duplicate are errors');
+    assert.equal(t.warnings, 0, 'error precedence must clear the warning bucket');
+    assert.equal(t.passed + t.warnings + t.errors, t.total);
+  });
+
+  test('the tally moves with the input rather than reporting fixed numbers', () => {
+    const messy: NormalizedInput = {
+      meta: { projectName: 'messy', sourceFidelity: 'figma-plugin' },
+      collections: [
+        {
+          name: 'Colors',
+          groups: [
+            {
+              name: 'semantic',
+              type: 'COLOR',
+              tokens: [
+                { name: 'color-brand-primary', value: '#007BBE' },
+                { name: 'color-primary-brand', value: '#007BBE' },
+                { name: 'Bad_Name', value: '#111111' },
+                { name: 'color-dangling', value: '#333333', aliasOf: 'gone', aliasInAnyMode: true, aliasBroken: true },
+                { name: 'color-fine-50', value: '#444444' },
+              ],
+            },
+          ],
+        },
+      ],
+    };
+    const a = tallyTokens(analyze(dtcg()));
+    const b = tallyTokens(analyze(messy));
+    assert.notDeepEqual(a, b, 'different token sets must produce different tallies');
+    assert.deepEqual(b, { passed: 1, warnings: 1, errors: 3, total: 5 });
+  });
+
+  test('leaf names repeated across collections are not merged', () => {
+    const input: NormalizedInput = {
+      meta: { projectName: 'x', sourceFidelity: 'figma-plugin' },
+      collections: [
+        { name: 'A', groups: [{ name: 'g', type: 'COLOR', tokens: [{ name: 'Bad_Name', value: '#111111' }] }] },
+        { name: 'B', groups: [{ name: 'g', type: 'COLOR', tokens: [{ name: 'Bad_Name', value: '#222222' }] }] },
+      ],
+    };
+    const t = tallyTokens(analyze(input));
+    assert.equal(t.total, 2);
+    assert.equal(t.warnings, 2, 'both same-named tokens must be counted separately');
+    assert.equal(t.passed, 0);
   });
 });
