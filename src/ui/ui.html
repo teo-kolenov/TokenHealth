@@ -158,7 +158,6 @@
   .progress-label { font-size: 12px; color: var(--text-muted); }
 
   .score-row { display: flex; align-items: center; gap: var(--sp-16); margin-bottom: var(--sp-12); }
-  .score-note { font-size: 12px; color: var(--text-muted); }
 
   /* Ring fill is driven by --score (0-100) and --ring-color, set from JS per
      health-score status: red = fail, orange = warn, green = ok. */
@@ -182,6 +181,30 @@
   }
   .score-ring-value { font-size: 24px; font-weight: 700; line-height: 1; color: var(--text); }
   .score-ring-label { font-size: 11px; color: var(--text-muted); margin-top: var(--sp-2); }
+
+  /* Severity tally beside the ring. Everything is width-relative: the track
+     absorbs whatever space the ring, label and count leave over, and the
+     min-width:0 on the flex children is what actually permits shrinking —
+     without it they hold their content width and overflow the panel. */
+  .tally { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; gap: var(--sp-6); }
+  .tally-row { display: flex; align-items: center; gap: var(--sp-8); }
+  .tally-label {
+    flex: 0 0 52px; font-size: 11px; color: var(--text-muted);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .tally-track {
+    flex: 1 1 0; min-width: 0; height: 6px;
+    background: var(--color-gray-10);
+    border-radius: var(--radius-s); overflow: hidden;
+  }
+  .tally-fill { height: 100%; border-radius: var(--radius-s); }
+  .tally-fill.ok   { background: var(--color-green-60); }
+  .tally-fill.warn { background: var(--color-yellow-40); }
+  .tally-fill.fail { background: var(--color-red-50); }
+  .tally-count {
+    flex: 0 0 auto; min-width: 22px; text-align: right;
+    font-size: 11px; font-weight: 500; color: var(--text);
+  }
 
   .chips { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--sp-8); }
   .chip {
@@ -309,7 +332,7 @@
           <span class="score-ring-label">health</span>
         </div>
       </div>
-      <div id="score-note" class="score-note"></div>
+      <div class="tally" id="report-tally"></div>
     </div>
     <div class="chips" id="report-chips"></div>
     <div class="findings-block">
