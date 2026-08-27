@@ -83,6 +83,10 @@
     display: flex; align-items: flex-start; justify-content: space-between; gap: var(--sp-12);
   }
   .head-sub { font-size: 12px; color: var(--text-muted); margin-top: var(--sp-2); }
+  /* Logo mark: a fixed brand asset, not a themable UI color — its fills stay
+     literal rather than tokenized, same as any other static image asset. */
+  .head-title { display: flex; align-items: center; gap: var(--sp-12); min-width: 0; }
+  .head-logo { flex-shrink: 0; width: 41px; height: 41px; border-radius: var(--radius-m); }
 
   .card {
     background: var(--surface-alt);
@@ -270,9 +274,18 @@
 <!-- Setup -->
 <section class="view active" id="view-setup">
   <div class="head">
-    <div>
-      <h1 id="file-name">Loading…</h1>
-      <div class="head-sub" id="file-summary">Reading variable collections…</div>
+    <div class="head-title">
+      <svg class="head-logo" viewBox="0 0 128 128" aria-hidden="true" focusable="false">
+        <rect width="128" height="128" rx="28" fill="#F5F4F0"></rect>
+        <rect x="26" y="26" width="56" height="56" rx="14" fill="#1250FF" opacity="0.3"></rect>
+        <rect x="38" y="38" width="56" height="56" rx="14" fill="#1250FF" opacity="0.62"></rect>
+        <rect x="50" y="50" width="56" height="56" rx="14" fill="#1250FF"></rect>
+        <circle cx="96" cy="32" r="10" fill="#FF8423"></circle>
+      </svg>
+      <div>
+        <h1 id="file-name">Loading…</h1>
+        <div class="head-sub" id="file-summary">Reading variable collections…</div>
+      </div>
     </div>
   </div>
   <div class="scroll">
